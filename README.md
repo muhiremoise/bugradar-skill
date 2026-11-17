@@ -1,119 +1,139 @@
-# BugRadar skill
+# BugRadar
 
-A quick quality check for the web app you are building with Claude Code. Say "test now" after you change something and it tells you **which existing features still work, what broke and what got fixed**.
+**A QA tester for the app you're building with Claude Code. Say "test now" and find out what you just broke.**
 
-Built by a QA lead for people who ship fast and don't have a tester.
+![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Runs locally](https://img.shields.io/badge/runs-100%25%20locally-blue) ![Node 18+](https://img.shields.io/badge/node-18%2B-brightgreen)
+
+You ship a new feature. It works. What you don't see is the older feature that quietly stopped working because of it.
+
+BugRadar is a Claude Code skill that keeps a saved set of tests for your project and re-runs all of them every time you ask. It tells you three things: what still works, what broke, and what got fixed.
 
 ```
-Score: 48/100 (+7 since last check) · 4 pages
+You: test now
 
+Functional: 11 of 12 checks pass
+
+Broke since last run
+- TC-006 Checkout: order total no longer applies the quantity discount.
+  Likely cause: the change to OrderService::total() in this session.
+
+New and passing
+- TC-013 Promo code: valid code gives 10% off.
+
+Pages: 48/100 (+7) · 4 pages
 New
-- [critical] A button on /about has no label, so screen-reader users cannot tell what it does.
-
-Got worse
-- [critical] Form fields without labels on /pricing: 2, was 1.
-
+- [critical] A button on /about has no label, so screen-reader users
+  cannot tell what it does.
 Fixed
 - Logo image now has alternative text.
-- Low-contrast text on the home page.
 ```
 
-## What it does
+## Why not just ask Claude to write tests?
 
-**Functional checks: do existing features still work?**
-Claude reads your project, lists its features, and designs test cases for them using standard test design techniques (equivalence partitioning, boundary values, decision tables, state transitions, use cases, as taught in the ISTQB Foundation syllabus). Each test case is saved in your project as a check. The same checks run every time, and the report tells you what broke since last time.
+You can, and it will. The tests will pass. That is the problem.
 
-**Page check: did the pages get better or worse?**
-Measured in a real browser, read-only:
+On the first real project BugRadar ran on, Claude Code had just written 25 passing tests. BugRadar's "prove it can fail" step broke the app on purpose and re-ran them. **Two of the 25 still passed.** One claimed to test what happens when a message fails to send, but never simulated a failure. The other would have passed whether the slow work ran in the background or blocked the request.
 
-- Accessibility rule failures (axe-core, WCAG 2.1 A and AA)
-- Uncaught JavaScript errors and console errors
-- Requests that fail or return 4xx/5xx
-- Internal links that lead to broken pages
-- Missing viewport tag and meta description
+A test that cannot fail tells you nothing. BugRadar checks that each one can.
 
-## Your consent comes first
-
-- Functional checks may create test accounts and records. Claude asks before the first one, and your answer is recorded in `.bugradar/checks.json`. Until then those checks are skipped.
-- Test accounts are named `bugradar-test+...@example.com` so they are easy to find and remove.
-- Checks that send real messages, charge cards or call paid services never run unless you ask for them at that moment.
-- Nothing runs against a deployed site unless you confirm it is yours.
-
-## What it does not do
-
-- It does not test security.
-- The page check only sees pages a visitor can reach without logging in.
-- Automated accessibility rules catch only part of real accessibility problems.
-- Test cases are written by an AI from your code and docs, then saved as files you can read. Review them. A wrong test can pass on a broken feature.
-- Passing checks mean those saved tests passed. They do not mean your app has no bugs.
-
-## Install
+## Quick start
 
 Requires Node.js 18 or newer.
-
-For all your projects:
 
 ```bash
 git clone https://github.com/muhiremoise/bugradar-skill ~/.claude/skills/bugradar
 cd ~/.claude/skills/bugradar && npm install
 ```
 
-For one project only, clone into `.claude/skills/bugradar` inside that project instead.
+Start your app, open a new Claude Code session in your project, and say:
 
-**Check the folder.** `SKILL.md` must sit directly inside the `bugradar` folder:
+> set up functional checks for this project
+
+After that, any time you change something:
+
+> test now
+
+If you have Chrome or Edge installed, that is all the setup. Otherwise also run `npx playwright install chromium` in the skill folder.
+
+<details>
+<summary>Installing for one project only, or from a zip</summary>
+
+Clone into `.claude/skills/bugradar` inside that project instead.
+
+`SKILL.md` must sit directly inside the `bugradar` folder:
 
 ```
-.claude/skills/bugradar/SKILL.md      correct
+.claude/skills/bugradar/SKILL.md            correct
 .claude/skills/bugradar/bugradar/SKILL.md   wrong, Claude Code will not find it
 ```
 
-If you installed from a zip and ended up with a `bugradar` folder inside another `bugradar` folder, move the inner one up a level. To confirm the skill loaded, start a new Claude Code session and type `/bugradar`. It should appear in the suggestions.
+To confirm the skill loaded, start a new session and type `/bugradar`. It should appear in the suggestions.
+</details>
 
-If you have Google Chrome or Edge installed, that is all. Otherwise also run `npx playwright install chromium` in the skill folder.
+## How it works
 
-## Use
+**1. It learns your project.** Claude reads your code and docs, lists the features, and asks you to confirm the list. You know things the code doesn't say.
 
-Start your app, then in Claude Code say something like:
+**2. It designs test cases the way a tester would.** Highest-risk features first, using standard test design techniques: equivalence partitioning, boundary values, decision tables, state transitions and use cases, as taught in the ISTQB Foundation syllabus. Every test case is written down with its steps and expected result, in a file you can read.
 
-- "Test now"
-- "Did that last change break anything?"
-- "Set up functional checks for this project"
-- "Write test cases for the checkout feature"
+**3. It saves them as checks and proves each one can fail.** The same checks run every time, so results are comparable from one run to the next.
 
-or type `/bugradar`.
+**4. You say "test now".** It runs everything and leads with what changed.
 
-You can also run the scripts directly:
+## What you get
+
+| | |
+|---|---|
+| **Regression report** | Which checks passed last time and fail now. This answers "did I break anything?" |
+| **Test cases you can read** | `.bugradar/test-cases.md`, with the technique and source for each |
+| **Flaky test detection** | A check that fails and then passes is reported as flaky, never as a pass |
+| **Page check** | Accessibility rule failures (axe-core, WCAG 2.1 A and AA), JavaScript errors, failed requests, broken links |
+| **A score that doesn't move by itself** | Calculated by a script, so the same app always gets the same number |
+| **Fixes on request** | Claude offers to fix what it found, then re-runs to confirm |
+
+## You stay in control
+
+- **It asks before creating test data.** Checks that create accounts or records are skipped until you say yes. Test accounts are named `bugradar-test+...@example.com` so they are easy to find and remove.
+- **Real messages and charges never run by default.** A check that sends an email, an SMS or a payment only runs when you ask for it at that moment.
+- **Your own apps only.** Local addresses run straight away. A deployed site needs you to confirm it is yours.
+- **Nothing leaves your machine.** The scripts talk only to the app being tested. No account, no usage tracking.
+
+## What it does not do
+
+Worth knowing before you rely on it.
+
+- It does not test security.
+- The page check only sees pages a visitor can reach without logging in.
+- Automated accessibility rules catch only part of real accessibility problems.
+- Test cases are written by an AI from your code and docs. Read them. A wrong test can pass on a broken feature, which is why the "prove it can fail" step exists, and why it still isn't a guarantee.
+- Passing checks mean those saved tests passed. They do not mean your app has no bugs.
+
+## How the page score works
+
+Start at 100. Each open problem costs points by severity: critical 12, high 7, medium 3, low 1. The same problem on many pages counts once.
+
+## Running the scripts directly
 
 ```bash
 node ~/.claude/skills/bugradar/scripts/run-checks.mjs --url http://localhost:3000   # functional checks
 node ~/.claude/skills/bugradar/scripts/check.mjs --url http://localhost:3000        # page check
 ```
 
-Results are saved in a `.bugradar/` folder in your project.
+Add `--fail-on-regression` or `--fail-on-new` to get a non-zero exit code for scripts and CI.
 
-## Your own apps only
+## Tell me what it got wrong
 
-Local addresses run straight away. For a deployed site you must confirm it is yours (`--confirm-owned`). Please do not point this at sites you don't own.
+This is an early version, and what gets built next depends on what you report.
 
-## Privacy
+- **[Two-minute feedback form](https://docs.google.com/forms/d/e/1FAIpQLScMnga_Koq_9MsNpAI4hwMWLg7YjJWodpqwdHPa3D4MXzzZ6Q/viewform)**, with an optional sign-up for updates and the community
+- **[Open an issue](https://github.com/muhiremoise/bugradar-skill/issues)** for a bug or a wrong result
 
-The script talks only to the app you are checking. It sends nothing to us and collects no usage data.
+If BugRadar caught something real in your project, a star helps other builders find it.
 
-## How the score works
+## About
 
-Start at 100. Each open problem costs points by severity: critical 12, high 7, medium 3, low 1. The same problem on many pages counts once. The score is calculated by the script, so the same app always gets the same number.
-
-## Feedback
-
-This is an early version and your feedback decides what gets built next.
-
-- [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScMnga_Koq_9MsNpAI4hwMWLg7YjJWodpqwdHPa3D4MXzzZ6Q/viewform) (2 minutes, with an optional sign-up for updates and the community)
-- Open an issue on this repo to report a bug or a wrong result
+Built by [Moise Muhire](https://github.com/muhiremoise), a QA lead with 5+ years in software testing and automation, ISTQB Foundation certified. BugRadar is designed with ISTQB test techniques. It is not certified or endorsed by ISTQB.
 
 ## Licence
 
 MIT. See `LICENSE`.
-
-## What may come next
-
-Depending on what users ask for: a GitHub Action that runs the checks on every push, saved history with alerts, and security checks.
