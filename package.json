@@ -1,0 +1,18 @@
+{
+  "name": "bugradar-skill",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Measured, read-only quality check for web apps, with a what-changed comparison between runs.",
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "checks": "node scripts/run-checks.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "playwright": "^1.49.0"
+  }
+}
